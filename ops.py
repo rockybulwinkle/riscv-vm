@@ -1,5 +1,8 @@
 import util
+import functools
 import collections
+
+decode_lru_size = None
 
 class OpCode:
     def __init__(self):
@@ -24,6 +27,7 @@ class OpCode:
 class RType(OpCode):
     Op = collections.namedtuple("RTypeOps", "op rd funct3 rs1 rs2 funct7")
     @classmethod
+    @functools.lru_cache(maxsize=decode_lru_size)
     def decode(cls, instr):
         op = util.extract_bitfield(instr, 6, 0)
         rd = util.extract_bitfield(instr, 11, 7)
@@ -37,6 +41,7 @@ class RType(OpCode):
 class IType(OpCode):
     Op = collections.namedtuple("ITypeOps", "op rd funct3 rs1 imm")
     @classmethod
+    @functools.lru_cache(maxsize=decode_lru_size)
     def decode(cls, instr):
         op = util.extract_bitfield(instr, 6, 0)
         rd = util.extract_bitfield(instr, 11, 7)
@@ -53,6 +58,7 @@ class IType(OpCode):
 class SType(OpCode):
     Op = collections.namedtuple("STypeOps", "op funct3 rs1 rs2 imm")
     @classmethod
+    @functools.lru_cache(maxsize=decode_lru_size)
     def decode(cls, instr):
         op = util.extract_bitfield(instr, 6, 0)
         imm_4_0 = util.extract_bitfield(instr, 11, 7) << 0
@@ -72,6 +78,7 @@ class SType(OpCode):
 class BType(OpCode):
     Op = collections.namedtuple("BTypeOps", "op funct3 rs1 rs2 imm")
     @classmethod
+    @functools.lru_cache(maxsize=decode_lru_size)
     def decode(cls, instr):
         op = util.extract_bitfield(instr, 6, 0)
         imm_11 = util.extract_bitfield(instr, 7,7) << 11
@@ -93,6 +100,7 @@ class BType(OpCode):
 class UType(OpCode):
     Op = collections.namedtuple("UTypeOps", "op rd imm")
     @classmethod
+    @functools.lru_cache(maxsize=decode_lru_size)
     def decode(cls, instr):
         op = util.extract_bitfield(instr, 6, 0)
         rd = util.extract_bitfield(instr, 11, 7)
@@ -108,6 +116,7 @@ class UType(OpCode):
 class JType(OpCode):
     Op = collections.namedtuple("JTypeOps", "op rd imm")
     @classmethod
+    @functools.lru_cache(maxsize=decode_lru_size)
     def decode(cls, instr):
         op = util.extract_bitfield(instr, 6, 0)
         rd = util.extract_bitfield(instr, 11, 7)
@@ -190,7 +199,7 @@ class Load(IType):
     LBU = 0b100
     LHU = 0b101
     """
-    valid_ops = {0,1,2,4,5}
+    valid_ops = (0,1,2,4,5)
 
     @classmethod
     def execute(cls, op, state):
@@ -210,7 +219,7 @@ class Load(IType):
         state.regs.set(op.rd, rval)
 
 class Store(SType):
-    valid_ops = {0, 1, 2}
+    valid_ops = (0, 1, 2)
     @classmethod
     def execute(cls, op, state):
         assert op.funct3 in Load.valid_ops
@@ -230,7 +239,7 @@ class ArithImm(IType):
     SLLI = 0b001
     SRI = 0b101 #SRLI vs SRAI is dependent on imm
 
-    arithfuncts=dict()
+    arithfuncts=[None]*8
     arithfuncts[ADDI] = lambda rs1, imm: rs1+imm
     arithfuncts[SLTI] = lambda rs1, imm: 1 if rs1<imm else 0
     arithfuncts[SLTIU] = lambda rs1, imm: 1 if (rs1&0xFFFFFFFF)<(imm&0xFFFFFFFF) else 0
@@ -259,6 +268,7 @@ class ArithImm(IType):
         return rs1
 
     arithfuncts[SRI] = sri
+    arithfuncts=tuple(arithfuncts)
 
     @classmethod
     def execute(cls, op, state):
@@ -278,7 +288,7 @@ class ArithReg(RType):
     OR      =  0b110
     AND     =  0b111
 
-    arithfuncts = dict()
+    arithfuncts=[None]*8
 
     def addsub(rs1, rs2, funct7):
         if funct7 == 0b0100000:
@@ -304,6 +314,7 @@ class ArithReg(RType):
     arithfuncts[SR] = sr
     arithfuncts[OR] = lambda rs1, rs2, funct7: rs1 | rs2
     arithfuncts[AND] = lambda rs1, rs2, funct7: rs1 & rs2
+    arithfuncts=tuple(arithfuncts)
 
 
     @classmethod

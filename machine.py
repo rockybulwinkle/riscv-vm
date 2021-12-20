@@ -12,11 +12,13 @@ class Machine:
         self.state = state.MachineState()
         with open(sys.argv[1], "rb") as prog:
             addr = 0
-            while b:=prog.read(1):
+            b = prog.read(1)
+            while b:
                 b = b[0]
                 if conf.DEBUG: print(hex(b))
                 self.state.mem.poke(addr, b, 1)
                 addr += 1
+                b = prog.read(1)
         #using the ARM Cortex M1 standard for how we initialize PC and SP.
         self.state.regs.pc = self.state.mem.peek(4, 4)
         self.state.regs.set(2, self.state.mem.peek(0,4))
