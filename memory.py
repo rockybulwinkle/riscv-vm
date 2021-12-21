@@ -1,4 +1,6 @@
 import conf
+import util
+import datetime
 
 from collections import defaultdict
 
@@ -19,6 +21,7 @@ class Memory:
     def __init__(self):
         self._mem = defaultdict(lambda: 0)
         self.allow_unaligned=True
+        self._time_spent_waiting = datetime.timedelta()
 
     def check_alignment(self, addr, num_bytes):
         if not self.allow_unaligned:
@@ -30,13 +33,23 @@ class Memory:
         self.check_alignment(addr, num_bytes)
 
         val = 0
-        if ENDIAN==LITTLE:
-            for i in range(num_bytes):
-                val |= self._mem[i+addr] << (8*i)
+        if addr == 0xA0001000:
+            if conf.DEBUG: print("getch:", end="", flush=True)
+            start=datetime.datetime.now()
+            val = util.getch()
+            end=datetime.datetime.now()
+            self._time_spent_waiting+= end-start
+            if conf.DEBUG: print(val)
+            val = ord(val)
+
         else:
-            for i in range(num_bytes):
-                val |= self._mem[num_bytes-1-i+addr] << (8*i)
-        if conf.DEBUG: print ("Read %d bytes at addr"%num_bytes, hex(addr), ", data=", hex(val))
+            if ENDIAN==LITTLE:
+                for i in range(num_bytes):
+                    val |= self._mem[i+addr] << (8*i)
+            else:
+                for i in range(num_bytes):
+                    val |= self._mem[num_bytes-1-i+addr] << (8*i)
+            if conf.DEBUG: print ("Read %d bytes at addr"%num_bytes, hex(addr), ", data=", hex(val))
         return val
 
 
