@@ -263,7 +263,7 @@ class ArithImm(IType):
         if imm&0b111111100000 == 0:
             rs1 &= 0xFFFFFFFF
         elif imm&0b111111100000 != 0b010000000000:
-            raise Exception("Invalid funct7 in sri")
+            raise Exception("Invalid funct7 in sri: "+bin(imm>>5))
         rs1 >>= shamt
         return rs1
 
@@ -303,10 +303,10 @@ class ArithReg(RType):
     def sr(rs1, rs2, funct7):
         #This function is too complex to be written cleanly as a oneliner
         shamt = rs2&0b11111
-        if funct7&0b111111100000 == 0:
+        if funct7 == 0:
             rs1 &= 0xFFFFFFFF
-        elif funct7&0b111111100000 != 0b010000000000:
-            raise Exception("Invalid funct7 in sri")
+        elif funct7!= 0b0100000:
+            raise Exception("Invalid funct7 in sr")
         rs1 >>= shamt
         return rs1
 
